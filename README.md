@@ -191,11 +191,52 @@ These were chosen deliberately over broader coverage: they're the two places a b
 easy to introduce and hard to notice by eye (a permission check that's subtly wrong, or an import
 that silently mangles content).
 
+## Deployment
+
+Backend and database on **Render** (a `render.yaml` Blueprint at the repo root provisions both
+in one step — a free-tier Postgres and a free-tier web service for the backend, wired together
+automatically), frontend on **Netlify**. No paid tier required.
+
+### 1. Backend + database (Render)
+
+1. Sign in to [Render](https://render.com) (free, GitHub sign-in works) and connect this GitHub
+   repo.
+2. **New +** → **Blueprint** → pick this repo. Render reads `render.yaml` and creates:
+   - a free Postgres instance (`docx-postgres`)
+   - a free web service (`docx-backend`) built from `backend/`, wired to that database via
+     `DATABASE_URL`, with a random `SESSION_SECRET` generated automatically
+3. Before the first deploy finishes, set one more environment variable on the `docx-backend`
+   service: `FRONTEND_ORIGIN` = your Netlify URL (from step 2 below — deploy the frontend first
+   if you don't have it yet, then come back and set this).
+4. On boot, the service runs `prisma migrate deploy` automatically (see `backend/package.json`'s
+   `start` script) — the schema is created on first deploy with no manual migration step.
+5. Once live, run the seed script once against the production database from your machine:
+   `DATABASE_URL="<paste the Render Postgres external connection string>" npm --prefix backend run db:seed`.
+
+### 2. Frontend (Netlify)
+
+1. Sign in to [Netlify](https://netlify.com) and connect this repo (a `netlify.toml` at the repo
+   root already points it at `frontend/` with the right build command and publish directory).
+2. Set two environment variables on the site: `VITE_API_URL` = your Render backend's `https://…`
+   URL, and `VITE_WS_URL` = the same host with `wss://` instead of `https://` (e.g.
+   `https://docx-backend.onrender.com` → `wss://docx-backend.onrender.com`).
+3. Deploy. Netlify's SPA redirect rule (already in `netlify.toml`) makes client-side routes like
+   `/documents/:id` work on refresh.
+
+### Why this combination
+
+- Render's free web service is a real persistent Node process (not serverless), which the
+  collaboration WebSocket requires — see **Real-time collaboration** above.
+- One Render Blueprint provisions backend *and* database together, so there's one dashboard to
+  manage instead of two separate signups.
+- The session cookie is already produced with `sameSite: "none"; secure: true` whenever
+  `NODE_ENV=production` (see `backend/src/routes/auth.ts`) specifically so login works across the
+  Netlify ↔ Render domain boundary — no extra configuration needed for that part.
+
 ## Known gaps / what's next
 
-- No deployment yet; runs locally only for now. Deploying the collaboration WebSocket needs a
-  host that supports long-lived connections on the same process as the API (a plain serverless
-  function won't work for this piece) — see `PLAN.md`.
+- Deployment is documented above but not yet live — it depends on hosting accounts (Render,
+  Netlify) that only the project owner can create/authorize.
 - No collaboration-aware undo/redo (see **Real-time collaboration** above).
 - If someone's `EDIT`/`VIEW` access is changed while they have a document open, they only find
   out on their next action (a blocked write, or the live socket simply never having opened) —

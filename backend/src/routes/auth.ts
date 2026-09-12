@@ -7,10 +7,16 @@ import { requireAuth } from "../middleware/auth";
 
 export const authRouter = Router();
 
+const isProduction = process.env.NODE_ENV === "production";
+
+// In dev, frontend (localhost:5173) and backend (localhost:4000) are
+// different origins but the same *site*, so "lax" already works. In
+// production they're genuinely different domains (Netlify/Render), which
+// requires "none" + secure — browsers refuse that combination without both.
 const cookieOptions = {
   httpOnly: true,
-  sameSite: "lax" as const,
-  secure: process.env.NODE_ENV === "production",
+  sameSite: isProduction ? ("none" as const) : ("lax" as const),
+  secure: isProduction,
   maxAge: 1000 * 60 * 60 * 24 * 7,
 };
 
@@ -41,7 +47,7 @@ authRouter.post(
 );
 
 authRouter.post("/logout", (_req, res) => {
-  res.clearCookie(SESSION_COOKIE);
+  res.clearCookie(SESSION_COOKIE, cookieOptions);
   res.json({ success: true });
 });
 

@@ -1,0 +1,25 @@
+databases:
+  - name: docx-postgres
+    plan: free
+    postgresMajorVersion: "16"
+
+services:
+  - type: web
+    name: docx-backend
+    runtime: node
+    plan: free
+    rootDir: backend
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        fromDatabase:
+          name: docx-postgres
+          property: connectionString
+      - key: SESSION_SECRET
+        generateValue: true
+      - key: FRONTEND_ORIGIN
+        sync: false

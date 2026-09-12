@@ -14,6 +14,11 @@ const app = express();
 const PORT = process.env.PORT ?? 4000;
 const FRONTEND_ORIGIN = process.env.FRONTEND_ORIGIN ?? "http://localhost:5173";
 
+// Render/Railway/Netlify all terminate TLS at a reverse proxy in front of
+// this process — without this, Express can't tell the connection was
+// actually HTTPS, which the "secure" session cookie flag depends on.
+app.set("trust proxy", 1);
+
 app.use(cors({ origin: FRONTEND_ORIGIN, credentials: true }));
 app.use(express.json({ limit: "2mb" }));
 app.use(cookieParser());
