@@ -212,6 +212,10 @@ automatically), frontend on **Netlify**. No paid tier required.
    `start` script) — the schema is created on first deploy with no manual migration step.
 5. Once live, run the seed script once against the production database from your machine:
    `DATABASE_URL="<paste the Render Postgres external connection string>" npm --prefix backend run db:seed`.
+   If this fails with `Can't reach database server` even though the URL is correct (verify with
+   `psql "<url>" -c "select 1;"`, which is more patient about slow handshakes than Prisma's
+   default), append `?connect_timeout=30` to the URL — Render's free-tier Postgres can take
+   longer to establish an external connection than Prisma's default timeout allows.
 
 ### 2. Frontend (Netlify)
 
