@@ -1,2 +1,6 @@
 # Local Netlify folder
 .netlify
+
+# Walkthrough video build artifacts (screenshots/audio/slides) — the
+# final video itself is committed and tracked, just not these intermediates
+video-assets/
